@@ -9,6 +9,11 @@ Template.message.helpers
 	date: ->
 		return moment(this.ts).format('LL')
 
+	isTemp: ->
+		if @temp is true
+			return 'temp'
+		return
+
 	body: ->
 		switch this.t
 			when 'r'  then t('Room_name_changed', { room_name: this.msg, user_by: this.u.username })
@@ -54,7 +59,7 @@ Template.message.onViewRendered = (context) ->
 		ul = lastNode.parentElement
 		wrapper = ul.parentElement
 
-		if context.urls?.length > 0
+		if context.urls?.length > 0 and Template.oembedBaseWidget?
 			for item in context.urls
 				do (item) ->
 					urlNode = lastNode.querySelector('.body a[href="'+item.url+'"]')

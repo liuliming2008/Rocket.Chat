@@ -7,7 +7,9 @@ fi
 if [ $1 ]; then
 	source ./build-info.sh
 	export METEOR_SETTINGS=$(cat settings.$1.json)
-	meteor build --server rocket.chat --directory /var/www/rocket.chat
+	meteor add rocketchat:external
+	meteor add rocketchat:hubot
+	meteor build --server https://rocket.chat --directory /var/www/rocket.chat
 	cd /var/www/rocket.chat/bundle/programs/server
 	npm install
 	cd /var/www/rocket.chat/current

@@ -6,7 +6,10 @@ usernameIsAvaliable = (username) ->
 	if username.length < 1
 		return false
 
-	return not Meteor.users.findOne({username: username})?
+	if username is 'all'
+		return false
+
+	return not Meteor.users.findOne({username: {$regex : new RegExp(username, "i") }})
 
 @generateSuggestion = (user) ->
 	usernames = []

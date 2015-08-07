@@ -4,7 +4,7 @@ FlowRouter.route '/room/:_id',
 	action: (params, queryParams) ->
 		Session.set 'openedRoom', null
 
-		FlowLayout.render 'main', {center: 'loading'}
+		BlazeLayout.render 'main', {center: 'loading'}
 
 		Meteor.defer ->
 			track = Tracker.autorun ->
@@ -18,7 +18,8 @@ FlowRouter.route '/room/:_id',
 
 				mainNode = document.querySelector('.main-content')
 				if mainNode?
-					child?.remove() for child in mainNode.children
+					for child in mainNode.children
+						mainNode.removeChild child if child?
 					room = RoomManager.getDomOfRoom(params._id)
 					mainNode.appendChild room
 					if room.classList.contains('room-container')
@@ -27,12 +28,13 @@ FlowRouter.route '/room/:_id',
 				Session.set 'openedRoom', params._id
 
 				Session.set 'editRoomTitle', false
-				Meteor.call 'readMessages', params._id
+				Meteor.call 'readMessages', params._id if Meteor.userId()?
 				# KonchatNotification.removeRoomNotification(params._id)
 
-				setTimeout ->
-					$('.message-form .input-message').focus()
-				, 100
+				if Meteor.Device.isDesktop()
+					setTimeout ->
+						$('.message-form .input-message').focus()
+					, 100
 
 	triggersExit: [
 		->
@@ -42,5 +44,5 @@ FlowRouter.route '/room/:_id',
 					if child?
 						if child.classList.contains('room-container')
 							child.oldScrollTop = child.querySelector('.messages-box > .wrapper').scrollTop
-						child.remove() 
+						mainNode.removeChild child
 	]

@@ -17,6 +17,7 @@ meteor-platform
 reactive-var
 service-configuration
 
+arunoda:streams
 rocketchat:lib
 
 rocketchat:autolinker
@@ -24,31 +25,34 @@ rocketchat:emojione
 rocketchat:favico
 rocketchat:file
 rocketchat:highlight
-rocketchat:hubot
-#rocketchat:irc
 rocketchat:ldap
+rocketchat:logger
 rocketchat:markdown
 rocketchat:me
 rocketchat:mentions
 rocketchat:oembed
 rocketchat:webrtc
+#rocketchat:external
+#rocketchat:hubot
+#rocketchat:irc
 
 konecty:change-case
 konecty:delayed-task
 konecty:mongo-counter
 konecty:multiple-instances-status
 konecty:nrr
-konecty:user-presence
+konecty:user-presence@1.2.4
 
-arunoda:streams
-cfs:gridfs
 cfs:standard-packages
+cfs:gridfs
+#cfs:filesystem
+#cfs:s3
+#cfs:dropbox
+
 chrismbeckett:toastr
 francocatena:status
 jparker:gravatar
 kevohagan:sweetalert
-meteorhacks:flow-layout
-meteorhacks:flow-router
 meteorhacks:kadira
 mizzao:autocomplete
 mizzao:timesync
@@ -66,3 +70,11 @@ tmeasday:errors
 todda00:friendly-slugs
 underscorestring:underscore.string
 yasaricli:slugify
+reactive-dict
+yasinuslu:blaze-meta
+nimble:restivus
+dispatch:run-as-user
+kadira:flow-router
+kadira:blaze-layout
+mystor:device-detection
+fastclick

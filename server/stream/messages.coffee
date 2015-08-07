@@ -1,4 +1,5 @@
-msgStream = new Meteor.Stream 'messages'
+@msgStream = new Meteor.Stream 'messages'
+@deleteMsgStream = new Meteor.Stream 'delete-message'
 
 msgStream.permissions.write (eventName) ->
 	console.log('stream.permissions.write', this.userId);
@@ -18,6 +19,18 @@ msgStream.permissions.read (eventName) ->
 	catch e
 		return false
 
+
+deleteMsgStream.permissions.write (eventName) ->
+	return false
+
+deleteMsgStream.permissions.read (eventName) ->
+	try
+		canAccess = Meteor.call 'canAccessRoom', eventName, this.userId
+
+		return !!canAccess
+	catch e
+		return false
+
 Meteor.startup ->
 	filter =
 		$or: [
@@ -27,24 +40,12 @@ Meteor.startup ->
 			ets:
 				$gt: new Date()
 		]
-		_deleted:
-			$ne: true
 
 	options = {}
 
-	console.log 'Message.find(',JSON.stringify(filter, null, '  '),JSON.stringify(options, null, '  '),')'
-
 	ChatMessage.find(filter, options).observe
 		added: (record) ->
-			console.log 'added ->'.red,record
 			msgStream.emit record.rid, record
 
 		changed: (record) ->
-			console.log 'changed ->'.red,record
 			msgStream.emit record.rid, record
-
-	ChatMessage.find({ _deleted: true }, { fields: { rid: 1, _id: 1 } }).observeChanges
-		added: (_id, record) ->
-			msgStream.emit record.rid, { _id: _id, _deleted: true }
-		changed: (_id, record) ->
-			msgStream.emit record.rid, { _id: _id, _deleted: true }
