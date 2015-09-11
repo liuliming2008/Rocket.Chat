@@ -14,3 +14,6 @@ Meteor.publish 'userData', ->
 			avatarOrigin: 1
 			admin: 1
 			utcOffset: 1
+			language: 1
+			settings: 1
+			defaultRoom: 1

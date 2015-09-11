@@ -8,23 +8,30 @@
 					Notification.permission = status
 
 	# notificacoes HTML5
-	showDesktop: (room, msg) ->
-		unless Session.equals('user_' + Meteor.userId() + '_status', 'busy')
-			roomName = room.name + ' - Rocket.Chat'
+	showDesktop: (notification) ->
+		if not window.document.hasFocus?() and Meteor.user().status isnt 'busy'
 			if window.Notification && Notification.permission == "granted"
-				n = new Notification roomName,
-					icon: '/images/rocket-chat-logo-square.png'
-					body: _.stripTags(msg)
+				n = new Notification notification.title,
+					icon: '/images/logo/1024x1024-circle.png'
+					body: _.stripTags(notification.text)
 
-				n.onclick = ->
-					$('#chat-window-' + room._id + '.chat-window .chat-title').click()
+				if notification.payload?.rid?
+					n.onclick = ->
+						window.focus()
+						switch notification.payload.type
+							when 'd'
+								FlowRouter.go 'direct', {username: notification.payload.sender.username}
+							when 'c'
+								FlowRouter.go 'channel', {name: notification.payload.name}
+							when 'p'
+								FlowRouter.go 'group', {name: notification.payload.name}
 
 				setTimeout ->
 					n.close()
-				, 2000
+				, 10000
 
 	newMessage: ->
-		unless Session.equals('user_' + Meteor.userId() + '_status', 'busy')
+		unless Session.equals('user_' + Meteor.userId() + '_status', 'busy') or Meteor.user()?.settings?.preferences?.disableNewMessageNotification
 			$('#chatAudioNotification')[0].play()
 
 	newRoom: (rid, withSound = true) ->
@@ -49,7 +56,7 @@
 
 Tracker.autorun ->
 	if Session.get('newRoomSound')?.length > 0
-		unless Session.equals('user_' + Meteor.userId() + '_status', 'busy')
+		unless Session.equals('user_' + Meteor.userId() + '_status', 'busy') or Meteor.user()?.settings?.preferences?.disableNewRoomNotification
 			$('#chatNewRoomNotification').each ->
 				this.play()
 	else

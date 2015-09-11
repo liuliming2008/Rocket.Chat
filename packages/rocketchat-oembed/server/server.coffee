@@ -15,6 +15,7 @@ getUrlContent = (urlObj, redirectCount = 5, callback) ->
 		port: urlObj.port
 		hostname: urlObj.hostname
 		path: urlObj.path
+		rejectUnauthorized: false
 
 	httpOrHttps = if urlObj.protocol is 'https:' then https else http
 
@@ -170,4 +171,5 @@ OEmbed.RocketUrlParser = (message) ->
 
 	return message
 
-RocketChat.callbacks.add 'afterSaveMessage', OEmbed.RocketUrlParser, RocketChat.callbacks.priority.LOW
+if RocketChat.settings.get 'API_Embed'
+	RocketChat.callbacks.add 'afterSaveMessage', OEmbed.RocketUrlParser, RocketChat.callbacks.priority.LOW
