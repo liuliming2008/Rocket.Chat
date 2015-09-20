@@ -33,6 +33,7 @@ Meteor.startup ->
 
 	RocketChat.settings.addGroup 'General'
 	RocketChat.settings.add 'Site_Name', 'Rocket.Chat', { type: 'string', group: 'General', public: true }
+	RocketChat.settings.add 'Allow_Invalid_SelfSigned_Certs', false, { type: 'boolean', group: 'General' }
 
 	RocketChat.settings.addGroup 'API'
 	RocketChat.settings.add 'API_Analytics', '', { type: 'string', group: 'API', public: true }
@@ -44,6 +45,9 @@ Meteor.startup ->
 	RocketChat.settings.add 'SMTP_Username', '', { type: 'string', group: 'SMTP' }
 	RocketChat.settings.add 'SMTP_Password', '', { type: 'string', group: 'SMTP' }
 	RocketChat.settings.add 'From_Email', 'no-reply@rocket.chat', { type: 'string', group: 'SMTP' }
+	
+	RocketChat.settings.add 'Invitation_Subject', 'You have been invited to Rocket.Chat', { type: 'string', group: 'SMTP', section: 'Invitation' }
+	RocketChat.settings.add 'Invitation_HTML', '<h2>You have been invited to <h1>Rocket.Chat</h1></h2><p>Go to https://demo.rocket.chat and try the best open source chat solution available today!</p>', { type: 'string', multiline: true, group: 'SMTP', section: 'Invitation' }
 
 	RocketChat.settings.addGroup 'Message'
 	RocketChat.settings.add 'Message_AllowEditing', true, { type: 'boolean', group: 'Message', public: true }

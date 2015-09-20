@@ -1,6 +1,5 @@
 Template.sideNav.helpers
-	isAdmin: ->
-		return Meteor.user()?.admin is true
+
 	flexTemplate: ->
 		return SideNav.getFlex().template
 	flexData: ->
@@ -21,6 +20,12 @@ Template.sideNav.events
 	'mouseleave .header': ->
 		SideNav.leaveArrow()
 
+	'scroll .rooms-list': ->
+		menu.updateUnreadBars()
+
 Template.sideNav.onRendered ->
 	SideNav.init()
 	menu.init()
+
+	Meteor.defer ->
+		menu.updateUnreadBars()

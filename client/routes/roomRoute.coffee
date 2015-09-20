@@ -1,13 +1,15 @@
+currentTracker = undefined
+
 openRoom = (type, name) ->
 	Session.set 'openedRoom', null
 
-	BlazeLayout.render 'main', {center: 'loading'}
-
 	Meteor.defer ->
-		Tracker.autorun (c) ->
+		currentTracker = Tracker.autorun (c) ->
 			if RoomManager.open(type + name).ready() isnt true
+				BlazeLayout.render 'main', {center: 'loading'}
 				return
 
+			currentTracker = undefined
 			c.stop()
 
 			query =
@@ -17,7 +19,7 @@ openRoom = (type, name) ->
 			if type is 'd'
 				delete query.name
 				query.usernames =
-					$all: [name, Meteor.user().username]
+					$all: [name, Meteor.user()?.username]
 
 			room = ChatRoom.findOne(query)
 			if not room?
@@ -48,8 +50,23 @@ openRoom = (type, name) ->
 					$('.message-form .input-message').focus()
 				, 100
 
+			RocketChat.TabBar.resetButtons()
+			RocketChat.TabBar.addButton({ id: 'message-search', title: t('Search'), icon: 'icon-search', template: 'messageSearch', order: 1 })
+			if type is 'd'
+				RocketChat.TabBar.addButton({ id: 'members-list', title: t('User_Info'), icon: 'icon-user', template: 'membersList', order: 2 })
+			else
+				RocketChat.TabBar.addButton({ id: 'members-list', title: t('Members_List'), icon: 'icon-users', template: 'membersList', order: 2 })
+
+			# update user's room subscription
+			if ChatSubscription.findOne({rid: room._id})?.open is false
+				Meteor.call 'openRoom', room._id
 
 roomExit = ->
+	BlazeLayout.render 'main', {center: 'none'}
+
+	if currentTracker?
+		currentTracker.stop()
+
 	mainNode = document.querySelector('.main-content')
 	if mainNode?
 		for child in mainNode.children
