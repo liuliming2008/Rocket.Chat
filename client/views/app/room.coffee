@@ -7,6 +7,12 @@ favoritesEnabled = ->
 
 # @TODO bug com o botão para "rolar até o fim" (novas mensagens) quando há uma mensagem com texto que gere rolagem horizontal
 Template.room.helpers
+	showFormattingTips: ->
+		return RocketChat.settings.get('Message_ShowFormattingTips') and (RocketChat.Markdown or RocketChat.Highlight)
+	showMarkdown: ->
+		return RocketChat.Markdown
+	showHighlight: ->
+		return RocketChat.Highlight
 	favorite: ->
 		sub = ChatSubscription.findOne { rid: this._id }, { fields: { f: 1 } }
 		return 'icon-star favorite-room' if sub?.f? and sub.f and favoritesEnabled
@@ -160,36 +166,6 @@ Template.room.helpers
 				return template.find('.input-message')
 		}
 
-	remoteVideoUrl: ->
-		return Session.get('remoteVideoUrl')
-
-	selfVideoUrl: ->
-		return Session.get('selfVideoUrl')
-
-	videoActive: ->
-		return (Session.get('remoteVideoUrl') || Session.get('selfVideoUrl'))
-
-	remoteMonitoring: ->
-		return (webrtc?.stackid? && (webrtc.stackid == 'webrtc-ib'))
-
-	flexOpenedRTC1: ->
-		return 'layout1' if Session.equals('flexOpenedRTC1', true)
-
-	flexOpenedRTC2: ->
-		return 'layout2' if Session.equals('flexOpenedRTC2', true)
-
-	rtcLayout1: ->
-		return (Session.get('rtcLayoutmode') == 1 ? true: false);
-
-	rtcLayout2: ->
-		return (Session.get('rtcLayoutmode') == 2 ? true: false);
-
-	rtcLayout3: ->
-		return (Session.get('rtcLayoutmode') == 3 ? true: false);
-
-	noRtcLayout: ->
-		return (!Session.get('rtcLayoutmode') || (Session.get('rtcLayoutmode') == 0) ? true: false);
-
 	maxMessageLength: ->
 		return RocketChat.settings.get('Message_MaxAllowedSize')
 
@@ -212,11 +188,12 @@ Template.room.helpers
 		return !! ChatRoom.findOne { _id: @_id, t: 'c' }
 
 	canRecordAudio: ->
-		return navigator.getUserMedia? or navigator.webkitGetUserMedia?
+		return RocketChat.settings.get('Message_AudioRecorderEnabled') and (navigator.getUserMedia? or navigator.webkitGetUserMedia?)
 
-	roomManager: ->
+	unreadSince: ->
 		room = ChatRoom.findOne(this._id, { reactive: false })
-		return RoomManager.openedRooms[room.t + room.name]
+		if room?
+			return RoomManager.openedRooms[room.t + room.name]?.unreadSince?.get()
 
 	unreadCount: ->
 		return RoomHistoryManager.getRoom(@_id).unreadNotLoaded.get() + Template.instance().unreadCount.get()
@@ -233,13 +210,19 @@ Template.room.helpers
 		return RocketChat.TabBar.getTemplate()
 
 	flexData: ->
-		return RocketChat.TabBar.getData()
+		return _.extend { rid: this._id }, RocketChat.TabBar.getData()
 
 	adminClass: ->
 		return 'admin' if RocketChat.authz.hasRole(Meteor.userId(), 'admin')
 
 	showToggleFavorite: ->
 		return true if isSubscribed(this._id) and favoritesEnabled()
+
+	compactView: ->
+		return 'compact' if Meteor.user()?.settings?.preferences?.compactView
+
+	fileUploadAllowedMediaTypes: ->
+		return RocketChat.settings.get('FileUpload_MediaTypeWhiteList')
 
 Template.room.events
 	"touchstart .message": (e, t) ->
@@ -328,7 +311,8 @@ Template.room.events
 					file: item.getAsFile()
 					name: 'Clipboard'
 
-		fileUpload files
+		if files.length > 0
+			fileUpload files
 
 	'keydown .input-message': (event) ->
 		Template.instance().chatMessages.keydown(@_id, event, Template.instance())
@@ -393,7 +377,7 @@ Template.room.events
 	'click .message-cog': (e) ->
 		message_id = $(e.currentTarget).closest('.message').attr('id')
 		$('.message-dropdown:visible').hide()
-		$("\##{message_id} .message-dropdown").show()
+		$(".messages-box \##{message_id} .message-dropdown").show()
 
 	'click .message-dropdown-close': ->
 		$('.message-dropdown:visible').hide()
@@ -411,8 +395,9 @@ Template.room.events
 			FlowRouter.go 'channel', {name: channel}
 			return
 
-		RocketChat.TabBar.openFlex()
+		RocketChat.TabBar.setTemplate 'membersList'
 		Session.set('showUserInfo', $(e.currentTarget).data('username'))
+		RocketChat.TabBar.openFlex()
 
 	'click .image-to-download': (event) ->
 		ChatMessage.update {_id: this._arguments[1]._id, 'urls.url': $(event.currentTarget).data('url')}, {$set: {'urls.$.downloadImages': true}}
@@ -578,21 +563,16 @@ Template.room.onRendered ->
 	# salva a data da renderização para exibir alertas de novas mensagens
 	$.data(this.firstNode, 'renderedAt', new Date)
 
-	webrtc.onAcceptCall = (fromUsername) ->
-		if FlowRouter.current().route.name is 'direct' and FlowRouter.current().params.username is fromUsername
-			return
+	webrtc = WebRTC.getInstanceByRoomId template.data._id
+	if webrtc?
+		Tracker.autorun ->
+			if webrtc.remoteItems.get()?.length > 0
+				RocketChat.TabBar.setTemplate 'membersList'
+				RocketChat.TabBar.openFlex()
 
-		FlowRouter.go 'direct', {username: fromUsername}
-
-	webrtc.onRemoteUrl = (url) ->
-		RocketChat.TabBar.setTemplate 'membersList'
-		RocketChat.TabBar.openFlex()
-		Session.set('remoteVideoUrl', url)
-
-	webrtc.onSelfUrl = (url) ->
-		RocketChat.TabBar.setTemplate 'membersList'
-		RocketChat.TabBar.openFlex()
-		Session.set('selfVideoUrl', url)
+			if webrtc.localUrl.get()?
+				RocketChat.TabBar.setTemplate 'membersList'
+				RocketChat.TabBar.openFlex()
 
 
 renameRoom = (rid, name) ->
