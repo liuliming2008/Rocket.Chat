@@ -13,6 +13,14 @@ Template.room.helpers
 Template.room.events
 	'keyup .input-message': (event) ->
 		Template.instance().chatMessages.keyup(visitor.getRoom(), event, Template.instance())
+		# Inital height is 28. If the scrollHeight is greater than that( we have more text than area ),
+		# increase the size of the textarea. The max-height is set at 200
+		# even if the scrollHeight become bigger than that it should never exceed that.
+		# Account for no text in the textarea when increasing the height.
+		# If there is no text, reset the height.
+		inputScrollHeight = $(event.currentTarget).prop('scrollHeight')
+		if inputScrollHeight > 28
+			$(event.currentTarget).height( if $(event.currentTarget).val() == '' then '15px' else (if inputScrollHeight >= 200 then inputScrollHeight-50 else inputScrollHeight-20))
 
 	'keydown .input-message': (event) ->
 		Template.instance().chatMessages.keydown(visitor.getRoom(), event, Template.instance())
@@ -30,7 +38,7 @@ Template.room.events
 Template.room.onCreated ->
 	self = @
 	self.autorun ->
-		self.subscribe 'visitorRoom', visitor.getToken(), ->
+		self.subscribe 'livechat:visitorRoom', visitor.getToken(), ->
 			room = ChatRoom.findOne()
 			if room?
 				visitor.setRoom room._id
@@ -41,44 +49,47 @@ Template.room.onCreated ->
 	self.atBottom = true
 
 Template.room.onRendered ->
+	unless Meteor.userId()
+		return BlazeLayout.render 'main', {center: 'register'}
+
 	this.chatMessages = new ChatMessages
 	this.chatMessages.init(this.firstNode)
 
 Template.room.onRendered ->
-	wrapper = this.find('.wrapper')
+	messages = this.find('.messages')
 	newMessage = this.find(".new-message")
 
 	template = this
 
 	onscroll = _.throttle ->
-		template.atBottom = wrapper.scrollTop >= wrapper.scrollHeight - wrapper.clientHeight
+		template.atBottom = messages.scrollTop >= messages.scrollHeight - messages.clientHeight
 	, 200
 
 	Meteor.setInterval ->
 		if template.atBottom
-			wrapper.scrollTop = wrapper.scrollHeight - wrapper.clientHeight
+			messages.scrollTop = messages.scrollHeight - messages.clientHeight
 			newMessage.className = "new-message not"
 	, 100
 
-	wrapper.addEventListener 'touchstart', ->
+	messages.addEventListener 'touchstart', ->
 		template.atBottom = false
 
-	wrapper.addEventListener 'touchend', ->
+	messages.addEventListener 'touchend', ->
 		onscroll()
 		# readMessage.enable()
 		# readMessage.read()
 
-	wrapper.addEventListener 'scroll', ->
+	messages.addEventListener 'scroll', ->
 		template.atBottom = false
 		onscroll()
 
-	wrapper.addEventListener 'mousewheel', ->
+	messages.addEventListener 'mousewheel', ->
 		template.atBottom = false
 		onscroll()
 		# readMessage.enable()
 		# readMessage.read()
 
-	wrapper.addEventListener 'wheel', ->
+	messages.addEventListener 'wheel', ->
 		template.atBottom = false
 		onscroll()
 		# readMessage.enable()

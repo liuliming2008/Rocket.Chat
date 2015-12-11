@@ -27,6 +27,17 @@ Accounts.emailTemplates.resetPassword.text = (user, url) ->
 	url = url.replace Meteor.absoluteUrl(), Meteor.absoluteUrl() + 'login/'
 	verifyEmailText user, url
 
+if RocketChat.settings.get 'Accounts_Enrollment_Email'
+	Accounts.emailTemplates.enrollAccount.text = (user, url) ->
+		text = RocketChat.settings.get 'Accounts_Enrollment_Email'
+
+		text = text.replace /\[name\]/g, user.name or ''
+		text = text.replace /\[fname\]/g, _.strLeft(user.name, ' ') or  ''
+		text = text.replace /\[lname\]/g, _.strRightBack(user.name, ' ') or  ''
+		text = text.replace /\[email\]/g, user.emails?[0]?.address or ''
+
+		return text
+
 Accounts.onCreateUser (options, user) ->
 	# console.log 'onCreateUser ->',JSON.stringify arguments, null, '  '
 	# console.log 'options ->',JSON.stringify options, null, '  '
@@ -77,7 +88,7 @@ Accounts.validateLoginAttempt (login) ->
 	if login.allowed isnt true
 		return login.allowed
 
-	if login.user?.active isnt true
+	if !!login.user?.active isnt true
 		throw new Meteor.Error 'inactive-user', TAPi18n.__ 'User_is_not_activated'
 		return false
 
@@ -94,4 +105,9 @@ Accounts.validateLoginAttempt (login) ->
 	Meteor.defer ->
 		RocketChat.callbacks.run 'afterValidateLogin', login
 
+	return true
+
+Accounts.validateNewUser (user) ->
+	if RocketChat.settings.get('Accounts_Registration_AuthenticationServices_Enabled') is false and RocketChat.settings.get('LDAP_Enable') is false and not user.services?.password?
+		throw new Meteor.Error 'registration-disabled-authentication-services', 'User registration is disabled for authentication services'
 	return true
