@@ -3,10 +3,16 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 		@_initModel 'message'
 
 		@tryEnsureIndex { 'rid': 1, 'ts': 1 }
-		@tryEnsureIndex { 'ets': 1 }, { sparse: 1 }
+		@tryEnsureIndex { 'ts': 1 }
+		@tryEnsureIndex { 'u._id': 1 }
+		@tryEnsureIndex { 'editedAt': 1 }, { sparse: 1 }
+		@tryEnsureIndex { 'editedBy._id': 1 }, { sparse: 1 }
 		@tryEnsureIndex { 'rid': 1, 't': 1, 'u._id': 1 }
 		@tryEnsureIndex { 'expireAt': 1 }, { expireAfterSeconds: 0 }
 		@tryEnsureIndex { 'msg': 'text' }
+		@tryEnsureIndex { 'file._id': 1 }, { sparse: 1 }
+		@tryEnsureIndex { 'mentions.username': 1 }, { sparse: 1 }
+		@tryEnsureIndex { 'pinned': 1 }, { sparse: 1 }
 
 
 	# FIND ONE
@@ -20,6 +26,14 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 	findByMention: (username, options) ->
 		query =
 			"mentions.username": username
+
+		return @find query, options
+
+	findVisibleByMentionAndRoomId: (username, rid, options) ->
+		query =
+			_hidden: { $ne: true }
+			"mentions.username": username
+			"rid": rid
 
 		return @find query, options
 
@@ -76,7 +90,7 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 				ts:
 					$gt: timestamp
 			,
-				ets:
+				'editedAt':
 					$gt: timestamp
 			]
 
@@ -92,15 +106,47 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 
 		return @find query, options
 
+	findPinnedByRoom: (roomId, options) ->
+		query =
+			t: { $ne: 'rm' }
+			_hidden: { $ne: true }
+			pinned: true
+			rid: roomId
+
+		return @find query, options
+
+	getLastTimestamp: (options = {}) ->
+		query = { ts: { $exists: 1 } }
+		options.sort = { ts: -1 }
+		options.limit = 1
+
+		return @find(query, options)?.fetch?()?[0]?.ts
+
+	findByRoomIdAndMessageIds: (rid, messageIds, options) ->
+		query =
+			rid: rid
+			_id:
+				$in: messageIds
+
+		return @find query, options
+
 	cloneAndSaveAsHistoryById: (_id) ->
+		me = RocketChat.models.Users.findOneById Meteor.userId()
 		record = @findOneById _id
 		record._hidden = true
 		record.parent = record._id
-		record.ets = new Date()
+		record.editedAt = new Date
+		record.editedBy =
+			_id: Meteor.userId()
+			username: me.username
+		record.pinned = record.pinned
+		record.pinnedAt = record.pinnedAt
+		record.pinnedBy =
+			_id: record.pinnedBy?._id
+			username: record.pinnedBy?.username
 		delete record._id
 
 		return @insert record
-
 
 	# UPDATE
 	setHiddenById: (_id, hidden=true) ->
@@ -114,6 +160,7 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 		return @update query, update
 
 	setAsDeletedById: (_id) ->
+		me = RocketChat.models.Users.findOneById Meteor.userId()
 		query =
 			_id: _id
 
@@ -121,19 +168,25 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 			$set:
 				msg: ''
 				t: 'rm'
-				ets: new Date()
+				urls: []
+				mentions: []
+				attachments: []
+				editedAt: new Date()
+				editedBy:
+					_id: Meteor.userId()
+					username: me.username
 
 		return @update query, update
 
-	setPinnedByIdAndUserId: (_id, userId, pinned=true) ->
+	setPinnedByIdAndUserId: (_id, pinnedBy, pinned=true) ->
 		query =
 			_id: _id
-			'u._id': userId
 
 		update =
 			$set:
 				pinned: pinned
-				pts: new Date
+				pinnedAt: new Date
+				pinnedBy: pinnedBy
 
 		return @update query, update
 
@@ -154,6 +207,16 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 		update =
 			$set:
 				"u.username": username
+
+		return @update query, update, { multi: true }
+
+	updateUsernameOfEditByUserId: (userId, username) ->
+		query =
+			'editedBy._id': userId
+
+		update =
+			$set:
+				"editedBy.username": username
 
 		return @update query, update, { multi: true }
 
@@ -184,6 +247,16 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 
 		return @update query, update
 
+	upgradeEtsToEditAt: ->
+		query =
+			ets: { $exists: 1 }
+
+		update =
+			$rename:
+				"ets": "editedAt"
+
+		return @update query, update, { multi: true }
+
 	# INSERT
 	createWithTypeRoomIdMessageAndUser: (type, roomId, message, user, extraData) ->
 		record =
@@ -194,6 +267,7 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 			u:
 				_id: user._id
 				username: user.username
+			groupable: false
 
 		_.extend record, extraData
 
@@ -216,9 +290,32 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 		message = user.username
 		return @createWithTypeRoomIdMessageAndUser 'au', roomId, message, user, extraData
 
-	createRoomRenamedWithRoomIdRoomNameAndUser: (roomId, roomName, user, extraData) ->
-		return @createWithTypeRoomIdMessageAndUser 'r', roomId, roomName, user, extraData
+	createCommandWithRoomIdAndUser: (command, roomId, user, extraData) ->
+		return @createWithTypeRoomIdMessageAndUser 'command', roomId, command, user, extraData
 
+	createUserMutedWithRoomIdAndUser: (roomId, user, extraData) ->
+		message = user.username
+		return @createWithTypeRoomIdMessageAndUser 'user-muted', roomId, message, user, extraData
+
+	createUserUnmutedWithRoomIdAndUser: (roomId, user, extraData) ->
+		message = user.username
+		return @createWithTypeRoomIdMessageAndUser 'user-unmuted', roomId, message, user, extraData
+
+	createNewModeratorWithRoomIdAndUser: (roomId, user, extraData) ->
+		message = user.username
+		return @createWithTypeRoomIdMessageAndUser 'new-moderator', roomId, message, user, extraData
+
+	createModeratorRemovedWithRoomIdAndUser: (roomId, user, extraData) ->
+		message = user.username
+		return @createWithTypeRoomIdMessageAndUser 'moderator-removed', roomId, message, user, extraData
+
+	createNewOwnerWithRoomIdAndUser: (roomId, user, extraData) ->
+		message = user.username
+		return @createWithTypeRoomIdMessageAndUser 'new-owner', roomId, message, user, extraData
+
+	createOwnerRemovedWithRoomIdAndUser: (roomId, user, extraData) ->
+		message = user.username
+		return @createWithTypeRoomIdMessageAndUser 'owner-removed', roomId, message, user, extraData
 
 	# REMOVE
 	removeById: (_id) ->
@@ -238,3 +335,6 @@ RocketChat.models.Messages = new class extends RocketChat.models._Base
 			"u._id": userId
 
 		return @remove query
+
+	getMessageByFileId: (fileID) ->
+		return @findOne { 'file._id': fileID }

@@ -3,6 +3,9 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 		@_initModel 'room'
 
 		@tryEnsureIndex { 'name': 1 }, { unique: 1, sparse: 1 }
+		@tryEnsureIndex { 'default': 1 }
+		@tryEnsureIndex { 'usernames': 1 }
+		@tryEnsureIndex { 't': 1 }
 		@tryEnsureIndex { 'u._id': 1 }
 
 
@@ -44,6 +47,9 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 
 
 	# FIND
+	findById: (roomId) ->
+		return @find { _id: roomId }, options
+
 	findByType: (type, options) ->
 		query =
 			t: type
@@ -64,7 +70,7 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 		return @find query, options
 
 	findByNameContaining: (name, options) ->
-		nameRegex = new RegExp name, "i"
+		nameRegex = new RegExp s.trim(s.escapeRegExp(name)), "i"
 
 		query =
 			$or: [
@@ -77,7 +83,7 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 		return @find query, options
 
 	findByNameContainingAndTypes: (name, types, options) ->
-		nameRegex = new RegExp name, "i"
+		nameRegex = new RegExp s.trim(s.escapeRegExp(name)), "i"
 
 		query =
 			t:
@@ -106,6 +112,13 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 
 		return @find query, options
 
+	findByTypeContainigUsernames: (type, username, options) ->
+		query =
+			t: type
+			usernames: { $all: [].concat(username) }
+
+		return @find query, options
+
 	findByTypesAndNotUserIdContainingUsername: (types, userId, username, options) ->
 		query =
 			t:
@@ -124,16 +137,27 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 
 	findByTypeAndName: (type, name, options) ->
 		query =
-			t: type
 			name: name
+			t: type
 
 		return @find query, options
 
 	findByTypeAndNameContainigUsername: (type, name, username, options) ->
 		query =
-			t: type
 			name: name
+			t: type
 			usernames: username
+
+		return @find query, options
+
+	findByTypeAndArchivationState: (type, archivationstate, options) ->
+		query =
+			t: type
+
+		if archivationstate
+			query.archived = true
+		else
+			query.archived = { $ne: true }
 
 		return @find query, options
 
@@ -246,7 +270,7 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 
 		return @update query, update
 
-	incUnreadAndSetLastMessageTimestampById: (_id, inc=1, lastMessageTimestamp) ->
+	incMsgCountAndSetLastMessageTimestampById: (_id, inc=1, lastMessageTimestamp) ->
 		query =
 			_id: _id
 
@@ -265,6 +289,16 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 		update =
 			$set:
 				"usernames.$": username
+
+		return @update query, update, { multi: true }
+
+	replaceMutedUsername: (previousUsername, username) ->
+		query =
+			muted: previousUsername
+
+		update =
+			$set:
+				"muted.$": username
 
 		return @update query, update, { multi: true }
 
@@ -290,12 +324,61 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 
 		return @update query, update
 
+	setTypeById: (_id, type) ->
+		query =
+			_id: _id
+
+		update =
+			$set:
+				t: type
+
+		return @update query, update
+
+	setTopicById: (_id, topic) ->
+		query =
+			_id: _id
+
+		update =
+			$set:
+				topic: topic
+
+		return @update query, update
+
+	muteUsernameByRoomId: (_id, username) ->
+		query =
+			_id: _id
+
+		update =
+			$addToSet:
+				muted: username
+
+		return @update query, update
+
+	unmuteUsernameByRoomId: (_id, username) ->
+		query =
+			_id: _id
+
+		update =
+			$pull:
+				muted: username
+
+		return @update query, update
+
+	saveDefaultById: (_id, defaultValue) ->
+		query =
+			_id: _id
+
+		update =
+			$set:
+				default: defaultValue is 'true'
+
+		return @update query, update
 
 	# INSERT
 	createWithTypeNameUserAndUsernames: (type, name, user, usernames, extraData) ->
 		room =
-			t: type
 			name: name
+			t: type
 			usernames: usernames
 			msgs: 0
 			u:
@@ -332,6 +415,6 @@ RocketChat.models.Rooms = new class extends RocketChat.models._Base
 	removeByTypeContainingUsername: (type, username) ->
 		query =
 			t: type
-			username: username
+			usernames: username
 
 		return @remove query

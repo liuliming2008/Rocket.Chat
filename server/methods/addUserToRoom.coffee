@@ -1,8 +1,6 @@
 Meteor.methods
 	addUserToRoom: (data) ->
 		fromId = Meteor.userId()
-		console.log '[methods] addUserToRoom -> '.green, 'data:', data
-
 		unless Match.test data?.rid, String
 			throw new Meteor.Error 'invalid-rid'
 
@@ -14,6 +12,9 @@ Meteor.methods
 		# if room.username isnt Meteor.user().username and room.t is 'c'
 		if room.t is 'c' and room.u?.username isnt Meteor.user().username
 			throw new Meteor.Error 403, '[methods] addUserToRoom -> Not allowed'
+
+		if room.t is 'd'
+			throw new Meteor.Error 'cant-invite-for-direct-room'
 
 		# verify if user is already in room
 		if room.usernames.indexOf(data.username) isnt -1

@@ -1,8 +1,6 @@
 Meteor.methods
 	loadHistory: (rid, end, limit=20, ls) ->
 		fromId = Meteor.userId()
-		# console.log '[methods] loadHistory -> '.green, 'fromId:', fromId, 'rid:', rid, 'end:', end, 'limit:', limit, 'skip:', skip
-
 		unless Meteor.call 'canAccessRoom', rid, fromId
 			return false
 
@@ -12,7 +10,7 @@ Meteor.methods
 			limit: limit
 
 		if not RocketChat.settings.get 'Message_ShowEditedStatus'
-			options.fields = { ets: 0 }
+			options.fields = { 'editedAt': 0 }
 
 		if end?
 			records = RocketChat.models.Messages.findVisibleByRoomIdBeforeTimestamp(rid, end, options).fetch()
@@ -29,9 +27,12 @@ Meteor.methods
 			firstMessage = messages[messages.length - 1]
 			if firstMessage?.ts > ls
 				delete options.limit
-				unreadNotLoaded = RocketChat.models.Messages.findVisibleByRoomIdBetweenTimestamps(rid, ls, firstMessage.ts).count()
+				unreadMessages = RocketChat.models.Messages.findVisibleByRoomIdBetweenTimestamps(rid, ls, firstMessage.ts, { limit: 1, sort: { ts: 1 } })
+				firstUnread = unreadMessages.fetch()[0]
+				unreadNotLoaded = unreadMessages.count()
 
 		return {
 			messages: messages
+			firstUnread: firstUnread
 			unreadNotLoaded: unreadNotLoaded
 		}

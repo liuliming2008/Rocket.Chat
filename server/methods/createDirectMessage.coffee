@@ -3,9 +3,10 @@ Meteor.methods
 		if not Meteor.userId()
 			throw new Meteor.Error 'invalid-user', "[methods] createDirectMessage -> Invalid user"
 
-		console.log '[methods] createDirectMessage -> '.green, 'userId:', Meteor.userId(), 'arguments:', arguments
-
 		me = Meteor.user()
+
+		unless me.username
+			throw new Meteor.Error('invalid-user', '[methods] createDirectMessage -> Invalid user')
 
 		if me.username is username
 			throw new Meteor.Error('invalid-user', "[methods] createDirectMessage -> Invalid target user")

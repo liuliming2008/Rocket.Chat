@@ -11,7 +11,9 @@ Package.onUse(function(api) {
 	api.use([
 		'templating',
 		'coffeescript',
-		'rocketchat:lib@0.0.1'
+		'underscore',
+		'konecty:change-case',
+		'rocketchat:lib'
 	]);
 
 	api.addFiles('client/baseWidget.html', 'client');
@@ -30,7 +32,10 @@ Package.onUse(function(api) {
 	api.addFiles('client/oembedUrlWidget.html', 'client');
 	api.addFiles('client/oembedUrlWidget.coffee', 'client');
 
+	api.addFiles('client/oembedFrameWidget.html', 'client');
+
 	api.addFiles('server/server.coffee', 'server');
+	api.addFiles('server/providers.coffee', 'server');
 	api.addFiles('server/models/OEmbedCache.coffee', 'server');
 
 	api.export('OEmbed', 'server');
