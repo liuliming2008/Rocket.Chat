@@ -1,7 +1,7 @@
 /* globals emojione, Blaze, Template */
 RocketChat.EmojiPicker = {
 	width: 390,
-	height: 203,
+	height: 238,
 	initiated: false,
 	input: null,
 	source: null,
@@ -24,7 +24,7 @@ RocketChat.EmojiPicker = {
 			if (!this.opened) {
 				return;
 			}
-			if(!$(event.target).closest('.emoji-picker').length && !$(event.target).is('.emoji-picker')) {
+			if (!$(event.target).closest('.emoji-picker').length && !$(event.target).is('.emoji-picker')) {
 				if (this.opened) {
 					this.close();
 				}
@@ -76,8 +76,15 @@ RocketChat.EmojiPicker = {
 		this.pickCallback = callback;
 		this.source = source;
 
-		this.setPosition().addClass('show');
+		const containerEl = this.setPosition();
+		containerEl.addClass('show');
 
+		setTimeout(() => {
+			const emojiInput = containerEl.find('.emoji-filter input.search');
+			if (emojiInput) {
+				emojiInput.focus();
+			}
+		}, 100);
 		this.opened = true;
 	},
 	close() {

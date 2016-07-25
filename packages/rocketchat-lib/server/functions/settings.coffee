@@ -30,6 +30,9 @@ RocketChat.settings.add = (_id, value, options = {}) ->
 	if options.enableQuery?
 		options.enableQuery = JSON.stringify options.enableQuery
 
+	if options.i18nDefaultQuery?
+		options.i18nDefaultQuery = JSON.stringify options.i18nDefaultQuery
+
 	if process?.env?[_id]?
 		value = process.env[_id]
 		if value.toLowerCase() is "true"
@@ -159,6 +162,8 @@ RocketChat.settings.updateById = (_id, value) ->
 
 	if not _id or not value?
 		return false
+
+	value._updatedAt = new Date
 
 	return RocketChat.models.Settings.updateValueById _id, value
 

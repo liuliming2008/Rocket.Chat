@@ -1,11 +1,13 @@
 Meteor.methods
 	sendMessage: (message) ->
 		if not Meteor.userId()
-			throw new Meteor.Error 203, t('User_logged_out')
+			return false
 
 		if _.trim(message.msg) isnt ''
-
-			message.ts = new Date(Date.now() + TimeSync.serverOffset())
+			if isNaN(TimeSync.serverOffset())
+				message.ts = new Date()
+			else
+				message.ts = new Date(Date.now() + TimeSync.serverOffset())
 
 			message.u =
 				_id: Meteor.userId()
@@ -16,5 +18,5 @@ Meteor.methods
 			message = RocketChat.callbacks.run 'beforeSaveMessage', message
 
 			RocketChat.promises.run('onClientMessageReceived', message).then (message) ->
-
 				ChatMessage.insert message
+				RocketChat.callbacks.run 'afterSaveMessage', message

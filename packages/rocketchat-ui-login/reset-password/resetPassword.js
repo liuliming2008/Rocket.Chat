@@ -28,11 +28,6 @@ Template.resetPassword.events({
 						title: t('Error_changing_password'),
 						type: 'error'
 					});
-				} else {
-					Meteor.call('clearRequirePasswordChange', function() {
-						FlowRouter.go('home');
-						toastr.success(t('Password_changed_successfully'));
-					});
 				}
 			});
 		} else {
@@ -45,10 +40,9 @@ Template.resetPassword.events({
 						type: 'error'
 					});
 				} else {
-					Meteor.call('clearRequirePasswordChange', function() {
-						FlowRouter.go('home');
-						toastr.success(t('Password_changed_successfully'));
-					});
+					FlowRouter.go('home');
+					toastr.success(t('Password_changed_successfully'));
+					RocketChat.callbacks.run('userPasswordReset');
 				}
 			});
 		}

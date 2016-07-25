@@ -39,7 +39,7 @@ Template.messagePopupConfig.helpers
 				# Get online users
 				if items.length < 5 and filter?.trim() isnt ''
 					messageUsers = _.pluck(items, 'username')
-					Meteor.users.find({$and: [{username: exp}, {username: {$nin: [Meteor.user().username].concat(messageUsers)}}]}, {limit: 5 - messageUsers.length}).fetch().forEach (item) ->
+					Meteor.users.find({$and: [{username: exp}, {username: {$nin: [Meteor.user()?.username].concat(messageUsers)}}]}, {limit: 5 - messageUsers.length}).fetch().forEach (item) ->
 						items.push
 							_id: item.username
 							username: item.username
@@ -148,11 +148,10 @@ Template.messagePopupConfig.helpers
 							params: item.params
 							description: TAPi18n.__ item.description
 
-					if commands.length > 10
-						break
-
 				commands = commands.sort (a, b) ->
 					return a._id > b._id
+
+				commands = commands[0..10]
 
 				template.resultsLength.set commands.length
 				return commands
@@ -177,26 +176,8 @@ Template.messagePopupConfig.helpers
 					results = []
 					key = ':' + filter
 
-					# show common used emojis, when use input a single ':'
-					if filter == ''
-						commonEmojis = [
-								':laughing:',
-								':smiley:',
-								':stuck_out_tongue:',
-								':sunglasses:',
-								':wink:',
-								':innocent:',
-								':flushed:',
-								':disappointed:',
-								':cry:',
-								':heart:',
-								':broken_heart:'
-							]
-						for shortname in commonEmojis
-							results.push
-								_id: shortname
-								data: collection[shortname]
-						return results;
+					if RocketChat.emoji.asciiList[key] or filter.length < 2
+						return []
 
 					# use ascii
 					for shortname, value of RocketChat.emoji.asciiList

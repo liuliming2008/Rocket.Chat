@@ -27,6 +27,7 @@ Template.accountBox.events
 	'click .options .status': (event) ->
 		event.preventDefault()
 		AccountBox.setStatus(event.currentTarget.dataset.status)
+		RocketChat.callbacks.run('userStatusManuallySet', event.currentTarget.dataset.status)
 
 	'click .account-box': (event) ->
 		AccountBox.toggle()
@@ -52,8 +53,10 @@ Template.accountBox.events
 		SideNav.openFlex()
 		FlowRouter.go 'admin-info'
 
-	'click .account-link': ->
-		menu.close()
+	'click .account-link': (event) ->
+		event.stopPropagation();
+		event.preventDefault();
+		AccountBox.openFlex()
 
 	'click .account-box-item': ->
 		if @sideNav?
